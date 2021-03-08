@@ -10,6 +10,7 @@ import PSCache from './src/cache';
 import Logger from './src/Logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
+import sendAcg from './src/plugin/acg';
 import Akhr from './src/plugin/akhr';
 import _ from 'lodash';
 import minimist from 'minimist';
@@ -168,6 +169,11 @@ function commonHandle(e, context) {
   // setu
   if (global.config.bot.setu.enable) {
     if (sendSetu(context, logger)) return true;
+  }
+
+  // acg
+  if (global.config.bot.acg.enable) {
+    if (sendAcg(context, logger)) return true;
   }
 
   // reminder
