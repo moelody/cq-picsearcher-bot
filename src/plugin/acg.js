@@ -94,7 +94,6 @@ function sendAcg(context, logger) {
       .then(ret => ret.data)
       .then(async ret => {
 
-        global.replyMsg(context, ret);
         global.replyMsg(context, `${ret.url} (author${ret.author})`, true);
 
         // 反和谐
@@ -130,6 +129,7 @@ function sendAcg(context, logger) {
       .catch(e => {
         console.error(`${global.getTime()} [error]`);
         console.error(e);
+        global.replyMsg(context, `${zza}?type=json&site=all&size=${size}${keyword || ''}`, true);
         global.replyMsg(context, replys.setuError, true);
       });
     return true;
