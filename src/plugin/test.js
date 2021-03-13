@@ -10,4 +10,4 @@
 //     )
 //   .catch(e => {});
 
-console.log(true && '1' + 'f')
+console.log(new URL(/(?<=https:\/\/pixiv\.net\/i\/).+/.exec('https://pixiv.net/i/' + '24336')[0], "https://i.pixiv.cat/").toString())
