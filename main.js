@@ -167,14 +167,14 @@ function commonHandle(e, context) {
     return true;
   }
 
+  // pixiv
+  if (global.config.bot.pixiv.enable) {
+    if (sendPixiv(context, logger)) return true;
+  }
+
   // setu
   if (global.config.bot.setu.enable) {
     if (sendSetu(context, logger)) return true;
-  }
-
-  // Pixiv
-  if (global.config.bot.pixiv.enable) {
-    if (sendPixiv(context, logger)) return true;
   }
 
   // acg
