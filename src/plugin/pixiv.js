@@ -60,6 +60,7 @@ async function getAntiShieldingBase64(url) {
 function sendPixiv(context, logger) {
   const setting = global.config.bot.pixiv;
   const replys = global.config.bot.replys;
+  const proxy = setting.pximgProxy.trim();
   const pixivReg = new NamedRegExp(global.config.bot.regs.pixiv);
   const pixivRegExec = pixivReg.exec(context.message);
   if (pixivRegExec) {
@@ -107,7 +108,10 @@ function sendPixiv(context, logger) {
 
         global.replyMsg(context, `${ret.title}${' https://pixiv.net/i/' + ret.illust_id} (${ret.user_name})`, true);
 
-        const url = ret.large_url;
+        const url = 
+        proxy === ''
+          ? getProxyURL('https://pixiv.net/i/' + ret.illust_id)
+          : new URL(/(?<=https:\/\/i.pximg.net\/).+/.exec('https://pixiv.net/i/' + ret.illust_id)[0], proxy).toString();
 
         // 反和谐
         const base64 = await getAntiShieldingBase64(url).catch(e => {
