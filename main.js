@@ -10,6 +10,7 @@ import PSCache from './src/cache';
 import Logger from './src/Logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
+import sendPixiv from './src/plugin/pixiv';
 import sendAcg from './src/plugin/acg';
 import Akhr from './src/plugin/akhr';
 import _ from 'lodash';
@@ -169,6 +170,11 @@ function commonHandle(e, context) {
   // setu
   if (global.config.bot.setu.enable) {
     if (sendSetu(context, logger)) return true;
+  }
+
+  // Pixiv
+  if (global.config.bot.pixiv.enable) {
+    if (sendPixiv(context, logger)) return true;
   }
 
   // acg

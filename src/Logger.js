@@ -267,6 +267,18 @@ class Logger {
         sc.date = new Date().getTime();
         sc.count++;
         break;
+      
+        case 'pixiv':
+          if (!sc) {
+            sc = {
+              date: 0,
+              count: 0,
+            };
+            this.searchCount.set(sKey, sc);
+          }
+          sc.date = new Date().getTime();
+          sc.count++;
+          break;
 
       default:
         if (!sc) sc = 0;
