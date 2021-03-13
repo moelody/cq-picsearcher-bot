@@ -95,7 +95,7 @@ function sendAcg(context, logger) {
       .then(async ret => {
 
         global.replyMsg(context, `${ret.source && '原图' + ret.source} (author${ret.author})
-        tag${ret.tags}`, true);
+        标签${ret.tags}`, true);
 
         const url = ret.url;
 
