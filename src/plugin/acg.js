@@ -94,7 +94,9 @@ function sendAcg(context, logger) {
       .then(ret => ret.data)
       .then(async ret => {
 
-        global.replyMsg(context, `${ret.url} (author${ret.author})`, true);
+        global.replyMsg(context, `${ret.source} (author${ret.author})`, true);
+
+        const url = ret.url;
 
         // 反和谐
         const base64 = await getAntiShieldingBase64(url).catch(e => {
@@ -129,7 +131,6 @@ function sendAcg(context, logger) {
       .catch(e => {
         console.error(`${global.getTime()} [error]`);
         console.error(e);
-        global.replyMsg(context, `${zza}?type=json&site=all&size=${size}${keyword || ''}`, true);
         global.replyMsg(context, replys.setuError, true);
       });
     return true;
