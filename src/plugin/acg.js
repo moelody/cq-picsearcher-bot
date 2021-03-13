@@ -7,7 +7,7 @@ import '../utils/jimp.plugin';
 import Jimp from 'jimp';
 const Axios = require('../axiosProxy');
 
-const zza = Buffer.from('aHR0cHM6Ly9hcGkuYWRkZXNwLmNvbS9pbWFnZS9hY2cvP3JldHVybj1qc29u', 'base64').toString('utf8');
+const zza = Buffer.from('aHR0cHM6Ly9pbWcucGF1bHp6aC50ZWNoL3RvdWhvdS9yYW5kb20=', 'base64').toString('utf8');
 
 const PIXIV_404 = Symbol('Pixiv image 404');
 
@@ -91,7 +91,7 @@ function sendAcg(context, logger) {
     Axios.get(
       `${zza}?type=json&site=all&size=${size}${keyword || ''}`
     )
-      .then(ret => ret)
+      .then(ret => ret.data)
       .then(async ret => {
 
         global.replyMsg(context, `${ret.url} (author${ret.author})`, true);
@@ -99,7 +99,6 @@ function sendAcg(context, logger) {
         // 反和谐
         const base64 = await getAntiShieldingBase64(url).catch(e => {
           console.error(`${global.getTime()} [error] anti shielding`);
-          console.error(ret.file);
           console.error(e);
           if (String(e).includes('Could not find MIME for Buffer')) return PIXIV_404;
           global.replyMsg(context, '反和谐发生错误，图片将原样发送，详情请查看错误日志');
