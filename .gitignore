@@ -4,6 +4,9 @@
 /test
 /data/*
 
+# Test
+**/test.js
+
 # Logs
 logs
 *.log

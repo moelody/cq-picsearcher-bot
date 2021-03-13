@@ -71,7 +71,7 @@ function sendAcg(context, logger) {
     let delTime = setting.deleteTime;
 
     const regGroup = acgRegExec.groups || {};
-    const size = (regGroup.size && regGroup.size.replace(/(横屏|背景|)/, 'pc').replace(/(手机|竖屏|)/, 'wap')) || 'all';
+    const size = (regGroup.size && regGroup.size.replace(/(横屏|背景)/, 'pc').replace(/(手机|竖屏)/, 'wap')) || 'all';
     const keyword = (regGroup.tag && `&tag=${encodeURIComponent(regGroup.tag)}`) || false;
 
     // 私聊
