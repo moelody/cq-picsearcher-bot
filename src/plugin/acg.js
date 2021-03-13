@@ -94,6 +94,7 @@ function sendAcg(context, logger) {
       .then(ret => ret.data)
       .then(async ret => {
 
+        global.replyMsg(context, ret);
         global.replyMsg(context, `${ret.url} (author${ret.author})`, true);
 
         // 反和谐
