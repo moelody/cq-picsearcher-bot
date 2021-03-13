@@ -111,7 +111,7 @@ function sendPixiv(context, logger) {
         const url = 
         proxy === ''
           ? getProxyURL('https://pixiv.net/i/' + ret.illust_id)
-          : new URL(/(?<=https:\/\/i.pximg.net\/).+/.exec('https://pixiv.net/i/' + ret.illust_id)[0], proxy).toString();
+          : new URL(/(?<=https:\/\/pixiv\.net\/i\/).+/.exec('https://pixiv.net/i/' + ret.illust_id)[0], proxy).toString();
 
         // 反和谐
         const base64 = await getAntiShieldingBase64(url).catch(e => {
