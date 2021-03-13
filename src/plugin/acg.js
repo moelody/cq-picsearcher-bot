@@ -42,7 +42,7 @@ function checkBase64RealSize(base64) {
 }
 
 async function getAntiShieldingBase64(url) {
-  const setting = global.config.bot.setu;
+  const setting = global.config.bot.acg;
   if (setting.antiShielding) {
     try {
       const origBase64 = await imgAntiShielding(url);
@@ -125,7 +125,7 @@ function sendAcg(context, logger) {
             console.error(`${global.getTime()} [error] delete msg`);
             console.error(e);
           });
-        logger.doneSearch(context.user_id, 'setu');
+        logger.doneSearch(context.user_id, 'acg');
       })
       .catch(e => {
         console.error(`${global.getTime()} [error]`);
