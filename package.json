@@ -10,7 +10,7 @@
     "stop": "pm2 stop ecosystem.config.js",
     "restart": "pm2 restart ecosystem.config.js",
     "log": "pm2 logs CQPF",
-    "fetch": "git fetch pull && git merge pull/master && git push"
+    "fetch": "git fetch pull && git merge pull/master"
   },
   "repository": {
     "type": "git",
