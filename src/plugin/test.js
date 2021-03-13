@@ -5,7 +5,7 @@ Axios.get(
 .then(ret => ret.data)
   .then(ret => {
     
-    console.log(ret.file);
+    console.log(ret);
   }
     )
   .catch(e => {});
