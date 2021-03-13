@@ -1,8 +1,7 @@
+import _ from 'lodash';
 import nhentai from './nhentai';
 import getSource from './getSource';
 import CQ from './CQcode';
-// import shorten from './urlShorten/is.gd';
-// import { URL } from 'url';
 import pixivShorten from './urlShorten/pixiv';
 import logError from './logError';
 const Axios = require('./axiosProxy');
@@ -64,6 +63,7 @@ async function doSearch(imgURL, db, debug = false) {
               long_remaining, // 长时剩余
               similarity, // 相似度
               thumbnail, // 缩略图
+              index_id, // 图库
             },
             data: {
               ext_urls,
@@ -79,12 +79,33 @@ async function doSearch(imgURL, db, debug = false) {
           let source = null;
           if (ext_urls) {
             url = ext_urls[0];
-            // 如果结果有多个，优先取danbooru
-            for (let i = 1; i < ext_urls.length; i++) {
-              if (ext_urls[i].indexOf('danbooru') !== -1) url = ext_urls[i];
+            if (index_id === snDB.pixiv) {
+              // 如果结果为 pixiv，尝试找到原始投稿，避免返回盗图者的投稿
+              const pixivResults = data.results.filter(
+                result =>
+                  result.header.index_id === snDB.pixiv &&
+                  _.get(result, 'data.ext_urls[0]') &&
+                  Math.abs(result.header.similarity - similarity) < 5
+              );
+              if (pixivResults.length > 1) {
+                const result = _.minBy(pixivResults, result =>
+                  parseInt(result.data.ext_urls[0].match(/\d+/).toString())
+                );
+                url = result.data.ext_urls[0];
+                title = result.data.title;
+                member_name = result.data.member_name;
+                member_id = result.data.member_id;
+                similarity = result.header.similarity;
+                thumbnail = result.header.thumbnail;
+              }
+            } else if (ext_urls.length > 1) {
+              // 如果结果有多个，优先取 danbooru
+              for (let i = 1; i < ext_urls.length; i++) {
+                if (ext_urls[i].indexOf('danbooru') !== -1) url = ext_urls[i];
+              }
             }
             url = url.replace('http://', 'https://');
-            // 若为danbooru则获取来源
+            // 获取来源
             source = await getSource(url).catch(() => null);
           }
 
@@ -99,7 +120,9 @@ async function doSearch(imgURL, db, debug = false) {
           else if (short_remaining < 5) {
             warnMsg += `saucenao-${hostIndex}：注意，30s内搜图次数仅剩${short_remaining}次\n`;
           }
+
           // 相似度
+          similarity = parseFloat(similarity).toFixed(2);
           if (similarity < global.config.bot.saucenaoLowAcc) {
             lowAcc = true;
             warnMsg += `相似度 ${similarity}% 过低，如果这不是你要找的图，那么可能：确实找不到此图/图为原图的局部图/图清晰度太低/搜索引擎尚未同步新图\n`;
