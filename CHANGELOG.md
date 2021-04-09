@@ -2,6 +2,38 @@
 
 ## 2021
 
+### 04-05 v2.24.1
+
+- 修复哔哩哔哩解析无法解析 b23 / acg 短链接的问题
+
+### 04-04 v2.24.0
+
+- 【反哔哩哔哩小程序】模块更名为【哔哩哔哩解析】模块，并增加动态、专栏、直播间的解析 (thanks @NekoHina)
+- 配置项变更
+  - M `bot.antiBiliMiniApp` -> `bot.bilibili`：仍兼容旧字段
+  - A `bot.bilibili.getDynamicInfo`
+  - A `bot.bilibili.getArticleInfo`
+  - A `bot.bilibili.getLiveRoomInfo`
+
+### 03-22 v2.23.2
+
+- 更新检查不再依赖本地 git
+
+### 03-21 v2.23.1
+
+- 修复将 `bot.admin` 设置为机器人自己时会无限发言的问题 ([#152](../../issues/152))
+
+### 03-13 v2.23.0
+
+- 在某张图的搜索过程中收到的同一张图片的搜图请求将会等待搜索结束后直接使用同一搜索结果 ([#136](../../issues/136))
+- 搜索未结束时在相同场景下收到同一张图片的搜图请求将会直接返回提示语 `bot.replys.searching` ([#136](../../issues/136))
+- 搜图模式结束后若未收到过图片则会发送提醒 ([#136](../../issues/136))
+- 可选使用合并转发发送搜图结果 `bot.groupForwardSearchResult` ([#136](../../issues/136))
+- 可能修复了有时候发出的搜图结果图片上传失败的问题
+- 配置项变更
+  - A `bot.replys.searching`
+  - A `bot.groupForwardSearchResult`
+
 ### 03-12 v2.22.5
 
 - 修复 whatanime 搜索失败问题
