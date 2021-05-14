@@ -6,7 +6,7 @@ import saucenao, { snDB } from './src/saucenao';
 import whatanime from './src/whatanime';
 import ascii2d from './src/ascii2d';
 import CQ from './src/CQcode';
-import PSCache from './src/cache';
+import psCache from './src/cache';
 import Logger from './src/Logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
@@ -40,13 +40,6 @@ globalReg({
   sendGroupForwardMsg,
 });
 
-// 初始化
-let psCache = global.config.bot.cache.enable ? new PSCache() : null;
-event.on('reload', () => {
-  if (global.config.bot.cache.enable && !psCache) psCache = new PSCache();
-  setBotEventListener();
-});
-
 // 好友请求
 bot.on('request.friend', context => {
   let approve = global.config.bot.autoAddFriend;
@@ -59,6 +52,7 @@ bot.on('request.friend', context => {
         if (ans !== a) approve = false;
       });
     } catch (e) {
+      console.error(`${global.getTime()} 加好友请求`);
       console.error(e);
       approve = false;
     }
@@ -113,6 +107,7 @@ function setBotEventListener() {
   }
 }
 setBotEventListener();
+event.on('reload', setBotEventListener);
 
 // 连接相关监听
 bot
@@ -252,13 +247,11 @@ function adminPrivateMsg(e, context) {
   }
 
   // 明日方舟
-  if (args['update-akhr'])
-    Akhr.updateData()
-      .then(() => replyMsg(context, '方舟公招数据已更新'))
-      .catch(e => {
-        logError(e);
-        replyMsg(context, '方舟公招数据更新失败，请查看错误日志');
-      });
+  if (args['update-akhr'] || args['akhr-update']) {
+    Akhr.updateData().then(success =>
+      replyMsg(context, success ? '方舟公招数据已更新' : '方舟公招数据更新失败，请查看错误日志')
+    );
+  }
 
   // 停止程序（使用 pm2 时相当于重启）
   if (args.shutdown) process.exit();
@@ -468,8 +461,8 @@ async function searchImg(context, customDB = -1) {
     }
 
     // 获取缓存
-    if (global.config.bot.cache.enable && !args.purge) {
-      const cache = await psCache.getCache(img, db);
+    if (psCache.enable && !args.purge) {
+      const cache = psCache.get(img, db);
       if (cache) {
         const msgs = cache.map(msg => `${CQ.escape('[缓存]')} ${msg}`);
         if (msgs.length > 1 && global.config.bot.groupForwardSearchResult && context.message_type === 'group') {
@@ -543,16 +536,16 @@ async function searchImg(context, customDB = -1) {
     if (useWhatAnime) {
       const waRet = await whatanime(img.url, args.debug || global.config.bot.debug);
       if (!waRet.success) success = false; // 如果搜番有误也视作不成功
-      await Replier.reply(waRet.msg);
-      if (waRet.msg.length > 0) needCacheMsgs.push(waRet.msg);
+      await Replier.reply(...waRet.msgs);
+      if (waRet.msgs.length > 0) needCacheMsgs.push(...waRet.msgs);
     }
 
     if (success) logger.doneSearch(context.user_id);
     Replier.end();
 
     // 将需要缓存的信息写入数据库
-    if (global.config.bot.cache.enable && success) {
-      await psCache.addCache(img, db, needCacheMsgs);
+    if (psCache.enable && success) {
+      psCache.set(img, db, needCacheMsgs);
     }
   }
 }

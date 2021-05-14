@@ -32,6 +32,9 @@
     "hideImgWhenLowAcc": false,
     // whatanime 得到 R18 结果时隐藏结果缩略图
     "hideImgWhenWhatanimeR18": false,
+    // whatanime 发送预览视频，R18 结果不会发送（需要自行安装 ffmpeg 供 go-cqhttp 使用）
+    // https://ffmpeg.org/download.html
+    "whatanimeSendVideo": false,
     // saucenao 默认搜索库，可选值：["all", "pixiv", "danbooru", "doujin", "anime"]
     "saucenaoDefaultDB": "all",
     // saucenao 相似度低于这个百分比将被认定为相似度过低
@@ -192,6 +195,8 @@
     "akhr": {
       // 是否启用
       "enable": false,
+      // 检查更新间隔（小时），0 则关闭
+      "updateInterval": 24,
       // 使用的 OCR 服务，可选值同上面的 bot.ocr.use
       "ocr": "ocr.space"
     },
