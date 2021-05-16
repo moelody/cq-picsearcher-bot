@@ -135,6 +135,8 @@ function sendSetu(context, logger) {
             ? getProxyURL(ret.file)
             : new URL(/(?<=https:\/\/i.pximg.net\/).+/.exec(ret.file)[0], proxy).toString();
 
+        console.log(url);
+
         // 反和谐
         const base64 =
           !privateR18 &&
