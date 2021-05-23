@@ -7,7 +7,7 @@ import whatanime from './src/whatanime';
 import ascii2d from './src/ascii2d';
 import CQ from './src/CQcode';
 import psCache from './src/cache';
-import Logger from './src/Logger';
+import logger from './src/logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
 import sendPixiv from './src/plugin/pixiv';
@@ -27,7 +27,6 @@ import asyncMap from './src/utils/asyncMap';
 const ocr = require('./src/plugin/ocr');
 
 const bot = new CQWebSocket(global.config.cqws);
-const logger = new Logger();
 const rand = RandomSeed.create();
 
 // 全局变量
@@ -146,7 +145,7 @@ async function commonHandle(e, context) {
   if (context.user_id === bot._qq) return true;
 
   // 黑名单检测
-  if (Logger.checkBan(context.user_id, context.group_id)) return true;
+  if (logger.checkBan(context.user_id, context.group_id)) return true;
 
   // 语言库
   if (corpus(context)) return true;
@@ -186,7 +185,7 @@ async function commonHandle(e, context) {
 
   // setu
   if (global.config.bot.setu.enable) {
-    if (sendSetu(context, logger)) return true;
+    if (sendSetu(context)) return true;
   }
 
   //  反哔哩哔哩小程序
@@ -238,11 +237,11 @@ function adminPrivateMsg(e, context) {
   // Ban
   const { 'ban-u': bu, 'ban-g': bg } = args;
   if (bu && typeof bu === 'number') {
-    Logger.ban('u', bu);
+    logger.ban('u', bu);
     replyMsg(context, `已封禁用户${bu}`);
   }
   if (bg && typeof bg === 'number') {
-    Logger.ban('g', bg);
+    logger.ban('g', bg);
     replyMsg(context, `已封禁群组${bg}`);
   }
 
