@@ -174,11 +174,6 @@ async function commonHandle(e, context) {
   //   if (sendPixiv(context, logger)) return true;
   // }
 
-  // setu
-  if (global.config.bot.setu.enable) {
-    if (sendSetu(context, logger)) return true;
-  }
-
   // acg
   if (global.config.bot.acg.enable) {
     if (sendAcg(context, logger)) return true;
@@ -187,6 +182,11 @@ async function commonHandle(e, context) {
   // reminder
   if (global.config.bot.reminder.enable) {
     if (rmdHandler(context)) return true;
+  }
+
+  // setu
+  if (global.config.bot.setu.enable) {
+    if (sendSetu(context, logger)) return true;
   }
 
   //  反哔哩哔哩小程序
