@@ -455,7 +455,7 @@ async function searchImg(context, customDB = -1) {
   for (const img of imgs) {
     // 指令：获取图片链接
     if (args['get-url']) {
-      replyMsg(context, img.url.replace(/\/\d+\/+\d+-/, '/0/0-').replace(/\?.*$/, ''));
+      replyMsg(context, img.url);
       continue;
     }
 
@@ -474,7 +474,7 @@ async function searchImg(context, customDB = -1) {
     // 检查搜图次数
     if (
       context.user_id !== global.config.bot.admin &&
-      !logger.canSearch(context.user_id, global.config.bot.searchLimit)
+      !logger.applyQuota(context.user_id, { value: global.config.bot.searchLimit })
     ) {
       replyMsg(context, global.config.bot.replys.personLimit, false, true);
       return;
@@ -492,6 +492,7 @@ async function searchImg(context, customDB = -1) {
     const Replier = searchingMap.getReplier(img, db);
     const needCacheMsgs = [];
     let success = true;
+    let hasSucc = false;
     let snLowAcc = false;
     let useAscii2d = args.a2d;
     let useWhatAnime = db === snDB.anime;
@@ -500,6 +501,7 @@ async function searchImg(context, customDB = -1) {
     if (!useAscii2d) {
       const snRes = await saucenao(img.url, db, args.debug || global.config.bot.debug);
       if (!snRes.success) success = false;
+      if (snRes.success) hasSucc = true;
       if (snRes.lowAcc) snLowAcc = true;
       if (
         !useWhatAnime &&
@@ -516,16 +518,16 @@ async function searchImg(context, customDB = -1) {
 
     // ascii2d
     if (useAscii2d) {
-      const { color, bovw, asErr } = await ascii2d(img.url, snLowAcc).catch(asErr => ({
-        asErr,
-      }));
+      const { color, bovw, success: asSuc, asErr } = await ascii2d(img.url, snLowAcc).catch(asErr => ({ asErr }));
       if (asErr) {
+        success = false;
         const errMsg = (asErr.response && asErr.response.data.length < 50 && `\n${asErr.response.data}`) || '';
         await Replier.reply(`ascii2d 搜索失败${errMsg}`);
         console.error(`${global.getTime()} [error] ascii2d`);
         logError(asErr);
       } else {
-        success = true;
+        if (asSuc) hasSucc = true;
+        if (!asSuc) success = false;
         await Replier.reply(color, bovw);
         needCacheMsgs.push(color, bovw);
       }
@@ -534,12 +536,13 @@ async function searchImg(context, customDB = -1) {
     // 搜番
     if (useWhatAnime) {
       const waRet = await whatanime(img.url, args.debug || global.config.bot.debug);
+      if (waRet.success) hasSucc = true;
       if (!waRet.success) success = false; // 如果搜番有误也视作不成功
       await Replier.reply(...waRet.msgs);
       if (waRet.msgs.length > 0) needCacheMsgs.push(...waRet.msgs);
     }
 
-    if (success) logger.doneSearch(context.user_id);
+    if (!hasSucc) logger.releaseQuota(context.user_id);
     Replier.end();
 
     // 将需要缓存的信息写入数据库
@@ -556,15 +559,15 @@ function doOCR(context) {
   const langSearch = /(?<=--lang=)[a-zA-Z]{2,3}/.exec(msg);
   if (langSearch) lang = langSearch[0];
 
-  const handleOcrResult = ret =>
-    replyMsg(context, ret.join('\n')).catch(e => {
-      replyMsg(context, 'OCR识别发生错误');
-      console.error(`${global.getTime()} [error] OCR`);
-      console.error(e);
-    });
-
   for (const img of imgs) {
-    ocr.default(img, lang).then(handleOcrResult);
+    ocr
+      .default(img, lang)
+      .then(results => replyMsg(context, results.join('\n')))
+      .catch(e => {
+        replyMsg(context, 'OCR发生错误');
+        console.error(`${global.getTime()} [error] OCR`);
+        console.error(e);
+      });
   }
 }
 
@@ -579,8 +582,6 @@ function doAkhr(context) {
     const imgs = getImgs(msg);
 
     const handleWords = words => {
-      // fix some ...
-      if (global.config.bot.akhr.ocr === 'ocr.space') words = _.map(words, w => w.replace(/冫口了/g, '治疗'));
       replyMsg(context, CQ.img64(Akhr.getResultImg(words)));
     };
 
@@ -611,7 +612,7 @@ function getImgs(msg) {
   while (search) {
     result.push({
       file: CQ.unescape(search[1]),
-      url: CQ.unescape(search[2]),
+      url: getUniversalImgURL(CQ.unescape(search[2])),
     });
     search = reg.exec(msg);
   }
@@ -651,7 +652,7 @@ function sendMsg2Admin(message) {
  * @param {boolean} at 是否at发送者
  * @param {boolean} reply 是否使用回复形式
  */
-function replyMsg(context, message, at = false, reply = false) {
+async function replyMsg(context, message, at = false, reply = false) {
   if (!bot.isReady() || typeof message !== 'string' || message.length === 0) return;
   if (context.message_type !== 'private') {
     message = `${reply ? CQ.reply(context.message_id) : ''}${at ? CQ.at(context.user_id) : ''}${message}`;
@@ -770,4 +771,11 @@ function parseArgs(str, enableArray = false, _key = null) {
 
 function debugMsgDeleteBase64Content(msg) {
   return msg.replace(/base64:\/\/[a-z\d+/=]+/gi, '(base64)');
+}
+
+function getUniversalImgURL(url) {
+  return url
+    .replace('/gchat.qpic.cn/gchatpic_new/', '/c2cpicdw.qpic.cn/offpic_new/')
+    .replace(/\/\d+\/+\d+-\d+-/, '/0/0-10000-')
+    .replace(/\?.*$/, '');
 }
