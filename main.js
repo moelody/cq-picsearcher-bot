@@ -156,7 +156,7 @@ async function commonHandle(e, context) {
 
   // 通用指令
   if (context.message === '--help') {
-    replyMsg(context, 'https://github.com/Tsuk1ko/cq-picsearcher-bot/wiki/%E5%A6%82%E4%BD%95%E9%A3%9F%E7%94%A8');
+    replyMsg(context, 'https://git.io/JEMWC');
     return true;
   }
   if (context.message === '--version') {
@@ -521,7 +521,10 @@ async function searchImg(context, customDB = -1) {
       const { color, bovw, success: asSuc, asErr } = await ascii2d(img.url, snLowAcc).catch(asErr => ({ asErr }));
       if (asErr) {
         success = false;
-        const errMsg = (asErr.response && asErr.response.data.length < 50 && `\n${asErr.response.data}`) || '';
+        const errMsg =
+          (asErr.response && asErr.response.data.length < 100 && `\n${asErr.response.data}`) ||
+          (asErr.message && `\n${asErr.message}`) ||
+          '';
         await Replier.reply(`ascii2d 搜索失败${errMsg}`);
         console.error(`${global.getTime()} [error] ascii2d`);
         logError(asErr);
@@ -606,17 +609,12 @@ function doAkhr(context) {
  * @returns 图片URL数组
  */
 function getImgs(msg) {
-  const reg = /\[CQ:image,file=([^,]+),url=([^\]]+)\]/g;
-  const result = [];
-  let search = reg.exec(msg);
-  while (search) {
-    result.push({
-      file: CQ.unescape(search[1]),
-      url: getUniversalImgURL(CQ.unescape(search[2])),
-    });
-    search = reg.exec(msg);
-  }
-  return result;
+  const cqimgs = CQ.from(msg).filter(cq => cq.type === 'image');
+  return cqimgs.map(cq => {
+    const data = cq.pickData(['file', 'url']);
+    data.url = getUniversalImgURL(data.url);
+    return data;
+  });
 }
 
 /**
@@ -773,7 +771,7 @@ function debugMsgDeleteBase64Content(msg) {
   return msg.replace(/base64:\/\/[a-z\d+/=]+/gi, '(base64)');
 }
 
-function getUniversalImgURL(url) {
+function getUniversalImgURL(url = '') {
   return url
     .replace('/gchat.qpic.cn/gchatpic_new/', '/c2cpicdw.qpic.cn/offpic_new/')
     .replace(/\/\d+\/+\d+-\d+-/, '/0/0-10000-')
