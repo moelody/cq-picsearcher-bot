@@ -17,11 +17,12 @@ import { rmdHandler } from './src/plugin/reminder';
 import broadcast from './src/broadcast';
 import bilibiliHandler from './src/plugin/bilibili';
 import logError from './src/logError';
-import event from './src/event';
+import emitter from './src/emitter';
 import corpus from './src/plugin/corpus';
 import getGroupFile from './src/plugin/getGroupFile';
 import searchingMap from './src/searchingMap';
 import asyncMap from './src/utils/asyncMap';
+import { execUpdate } from './src/utils/checkUpdate';
 const ocr = require('./src/plugin/ocr');
 
 const bot = new CQWebSocket(global.config.cqws);
@@ -35,6 +36,7 @@ globalReg({
   parseArgs,
   replySearchMsgs,
   sendGroupForwardMsg,
+  sendGroupMsg,
 });
 
 // 好友请求
@@ -104,7 +106,7 @@ function setBotEventListener() {
   }
 }
 setBotEventListener();
-event.on('reload', setBotEventListener);
+emitter.onConfigReload(setBotEventListener);
 
 // 连接相关监听
 bot
@@ -243,10 +245,11 @@ function adminPrivateMsg(e, context) {
   // 停止程序（使用 pm2 时相当于重启）
   if (args.shutdown) process.exit();
 
+  // 更新程序
+  if (args['update-cqps']) replyMsg(context, '开始更新，完成后会重新启动').then(execUpdate);
+
   // 重载配置
-  if (args.reload) {
-    loadConfig();
-  }
+  if (args.reload) loadConfig();
 }
 
 // 私聊以及群组@的处理
@@ -258,7 +261,7 @@ async function privateAndAtMsg(e, context) {
 
   if (context.message_type === 'group') {
     try {
-      const rMsgId = _.get(/^\[CQ:reply,id=([-\d]+?)\]/.exec(context.message), 1);
+      const rMsgId = _.get(/^\[CQ:reply,id=(-?\d+).*\]/.exec(context.message), 1);
       if (rMsgId) {
         const { data } = await bot('get_msg', { message_id: Number(rMsgId) });
         if (data) {
@@ -271,7 +274,7 @@ async function privateAndAtMsg(e, context) {
           const rMsg = imgs
             .map(({ file, url }) => `[CQ:image,file=${CQ.escape(file, true)},url=${CQ.escape(url, true)}]`)
             .join('');
-          context = { ...context, message: context.message.replace(/^\[CQ:reply,id=[-\d]+?\]/, rMsg) };
+          context = { ...context, message: context.message.replace(/^\[CQ:reply,id=-?\d+.*?\]/, rMsg) };
         }
       }
     } catch (error) {}
@@ -723,6 +726,13 @@ function sendGroupForwardMsg(group_id, msgs) {
         content,
       },
     })),
+  });
+}
+
+function sendGroupMsg(group_id, message) {
+  return bot('send_group_msg', {
+    group_id,
+    message,
   });
 }
 
