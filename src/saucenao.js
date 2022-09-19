@@ -3,7 +3,8 @@ import nhentai from './nhentai';
 import getSource from './getSource';
 import pixivShorten from './urlShorten/pixiv';
 import logError from './logError';
-import { getCqImg64FromUrl } from './utils/image';
+import { getAntiShieldingCqImg64FromUrl, getCqImg64FromUrl } from './utils/image';
+import CQ from './CQcode';
 const Axios = require('./axiosProxy');
 
 let hostsI = 0;
@@ -76,6 +77,7 @@ async function doSearch(imgURL, db, debug = false) {
               similarity, // 相似度
               thumbnail, // 缩略图
               index_id, // 图库
+              hidden, // 是否因 NSFW 而需要隐藏
             },
             data: {
               ext_urls,
@@ -150,14 +152,16 @@ async function doSearch(imgURL, db, debug = false) {
               warnMsg += '自动使用 ascii2d 进行搜索\n';
           }
 
+          const hideThumbnail =
+            (global.config.bot.hideImgWhenLowAcc && similarity < global.config.bot.saucenaoLowAcc) || hidden;
+
           // 回复的消息
           msg = await getShareText({
-            url,
-            title: [`SauceNAO (${simText}%)`, title].filter(v => v).join('\n'),
-            thumbnail:
-              global.config.bot.hideImgWhenLowAcc && similarity < global.config.bot.saucenaoLowAcc ? null : thumbnail,
+            url: CQ.escape(url),
+            title: [`SauceNAO (${simText}%)`, CQ.escape(title)].filter(v => v).join('\n'),
+            thumbnail: hideThumbnail ? null : thumbnail,
             author_url: member_id && url.indexOf('pixiv.net') >= 0 ? `https://pixiv.net/u/${member_id}` : null,
-            source,
+            source: CQ.escape(source),
           });
 
           success = true;
@@ -165,7 +169,7 @@ async function doSearch(imgURL, db, debug = false) {
           // 如果是本子
           const doujinName = jp_name || eng_name; // 本子名
           if (doujinName) {
-            if (global.config.bot.getDojinDetailFromNhentai) {
+            if (global.config.bot.getDoujinDetailFromNhentai) {
               const searchName = (eng_name || jp_name).replace('(English)', '').replace(/_/g, '/');
               const doujin = await nhentai(searchName).catch(e => {
                 logError(`${global.getTime()} [error] nhentai`);
@@ -185,9 +189,8 @@ async function doSearch(imgURL, db, debug = false) {
             }
             msg = await getShareText({
               url,
-              title: `(${simText}%) ${doujinName}`,
-              thumbnail:
-                !(global.config.bot.hideImgWhenLowAcc && similarity < global.config.bot.saucenaoLowAcc) && thumbnail,
+              title: `(${simText}%) ${CQ.escape(doujinName)}`,
+              thumbnail: hideThumbnail ? null : thumbnail,
             });
           }
 
@@ -201,7 +204,7 @@ async function doSearch(imgURL, db, debug = false) {
             msg = `saucenao-${hostIndex} 远程服务器出现问题，请稍后尝试重试`;
           } else {
             logError(data);
-            msg = `saucenao-${hostIndex} ${retMsg}`;
+            msg = `saucenao-${hostIndex} ${CQ.escape(retMsg)}`;
           }
         } else {
           logError(`${global.getTime()} [error] saucenao[${hostIndex}][data]`);
@@ -230,6 +233,8 @@ async function doSearch(imgURL, db, debug = false) {
   };
 }
 
+const banedHosts = ['danbooru.donmai.us', 'konachan.com'];
+
 /**
  * 链接混淆
  *
@@ -237,13 +242,22 @@ async function doSearch(imgURL, db, debug = false) {
  * @returns
  */
 async function confuseURL(url) {
+  if (global.config.bot.handleBanedHosts) {
+    for (const host of banedHosts) {
+      if (url.includes(host)) {
+        return url.replace(/^https?:\/\//, '').replace(host, host.replace(/\./g, '.删'));
+      }
+    }
+  }
   return pixivShorten(url);
 }
 
 async function getShareText({ url, title, thumbnail, author_url, source }) {
   const texts = [title];
   if (thumbnail && !global.config.bot.hideImg) {
-    texts.push(await getCqImg64FromUrl(thumbnail));
+    const mode = global.config.bot.antiShielding;
+    if (mode) texts.push(await getAntiShieldingCqImg64FromUrl(thumbnail, mode));
+    else texts.push(await getCqImg64FromUrl(thumbnail));
   }
   if (url) texts.push(await confuseURL(url));
   if (author_url) texts.push(`Author: ${await confuseURL(author_url)}`);
@@ -266,10 +280,11 @@ function getSearchResult(host, api_key, imgURL, db = 999) {
   return Axios.get(`${host}/search.php`, {
     params: {
       ...(api_key ? { api_key } : {}),
-      db: db,
+      db,
       output_type: 2,
       numres: 3,
       url: imgURL,
+      hide: global.config.bot.hideImgWhenSaucenaoNSFW,
     },
   });
 }

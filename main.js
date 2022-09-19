@@ -1,3 +1,4 @@
+import './src/utils/jimp.plugin';
 import { globalReg } from './src/utils/global';
 import { loadConfig } from './src/config';
 import { version } from './package.json';
@@ -35,7 +36,8 @@ globalReg({
   sendMsg2Admin,
   parseArgs,
   replySearchMsgs,
-  replyGroupForwardMsg,
+  replyGroupForwardMsgs,
+  replyPrivateForwardMsgs,
   sendGroupMsg,
 });
 
@@ -52,7 +54,7 @@ bot.on('request.friend', context => {
       });
     } catch (e) {
       console.error(`${global.getTime()} 加好友请求`);
-      console.error(e);
+      logError(e);
       approve = false;
     }
   }
@@ -148,6 +150,8 @@ setInterval(() => {
  * @type {import('cq-websocket').MessageEventListener}
  */
 async function commonHandle(e, context) {
+  const config = global.config.bot;
+
   // 忽略自己发给自己的消息
   if (context.user_id === context.self_id || context.user_id === context.self_tiny_id) return true;
 
@@ -157,9 +161,8 @@ async function commonHandle(e, context) {
   // 语言库
   if (corpus(context)) return true;
 
-  // 兼容其他机器人
-  const startChar = context.message.charAt(0);
-  if (startChar === '/' || startChar === '<') return true;
+  // 忽略指定正则的发言
+  if (config.regs.ignore && new RegExp(config.regs.ignore).test(context.message)) return true;
 
   // 通用指令
   if (context.message === '--help') {
@@ -176,12 +179,12 @@ async function commonHandle(e, context) {
   }
 
   // reminder
-  if (global.config.bot.reminder.enable) {
+  if (config.reminder.enable) {
     if (rmdHandler(context)) return true;
   }
 
   // setu
-  if (global.config.bot.setu.enable) {
+  if (config.setu.enable) {
     if (sendSetu(context)) return true;
   }
 
@@ -281,6 +284,7 @@ async function privateAndAtMsg(e, context) {
     if (!isSendByAdmin(context)) {
       e.stopPropagation();
       replyMsg(context, global.config.bot.replys.debug, true);
+      return;
     }
     switch (context.message_type) {
       case 'private':
@@ -380,7 +384,7 @@ async function groupMsg(e, context) {
   // 进入或退出搜图模式
   const { group_id, user_id } = context;
 
-  if (new RegExp(global.config.bot.regs.searchModeOn).exec(context.message)) {
+  if (new RegExp(global.config.bot.regs.searchModeOn).test(context.message)) {
     // 进入搜图
     e.stopPropagation();
     if (
@@ -390,7 +394,7 @@ async function groupMsg(e, context) {
     ) {
       replyMsg(context, global.config.bot.replys.searchModeOn, true);
     } else replyMsg(context, global.config.bot.replys.searchModeAlreadyOn, true);
-  } else if (new RegExp(global.config.bot.regs.searchModeOff).exec(context.message)) {
+  } else if (new RegExp(global.config.bot.regs.searchModeOff).test(context.message)) {
     e.stopPropagation();
     // 退出搜图
     if (logger.smSwitch(group_id, user_id, false)) replyMsg(context, global.config.bot.replys.searchModeOff, true);
@@ -503,9 +507,16 @@ async function searchImg(context, customDB = -1) {
       const cache = psCache.get(img, db);
       if (cache) {
         const msgs = cache.map(msg => `${CQ.escape('[缓存]')} ${msg}`);
-        if (msgs.length > 1 && global.config.bot.groupForwardSearchResult && context.message_type === 'group') {
-          await replyGroupForwardMsg(context, msgs);
-        } else await asyncMap(cache, msg => replySearchMsgs(context, `${CQ.escape('[缓存]')} ${msg}`));
+        const { groupForwardSearchResult, privateForwardSearchResult, pmSearchResult, pmSearchResultTemp } =
+          global.config.bot;
+        if (msgs.length > 1 && groupForwardSearchResult && context.message_type === 'group') {
+          if (pmSearchResult && !pmSearchResultTemp) {
+            if (privateForwardSearchResult) await replyPrivateForwardMsgs(context, msgs, [CQ.img(img.file)]);
+            else await replySearchMsgs(context, msgs);
+          } else await replyGroupForwardMsgs(context, msgs, [CQ.img(img.file)]);
+        } else if (msgs.length > 1 && privateForwardSearchResult && context.message_type === 'private') {
+          await replyPrivateForwardMsgs(context, msgs, [CQ.img(img.file)]);
+        } else await replySearchMsgs(context, msgs);
         continue;
       }
     }
@@ -525,7 +536,7 @@ async function searchImg(context, customDB = -1) {
         continue;
     }
 
-    const Replier = searchingMap.getReplier(img, db);
+    const replier = searchingMap.getReplier(img, db);
     const needCacheMsgs = [];
     let success = true;
     let hasSucc = false;
@@ -549,7 +560,7 @@ async function searchImg(context, customDB = -1) {
       }
       if (!snRes.lowAcc && snRes.msg.indexOf('anidb.net') !== -1) useWhatAnime = true;
       if (snRes.msg.length > 0) needCacheMsgs.push(snRes.msg);
-      await Replier.reply(snRes.msg, snRes.warnMsg);
+      await replier.reply(snRes.msg, snRes.warnMsg);
     }
 
     // ascii2d
@@ -561,13 +572,13 @@ async function searchImg(context, customDB = -1) {
           (asErr.response && asErr.response.data.length < 100 && `\n${asErr.response.data}`) ||
           (asErr.message && `\n${asErr.message}`) ||
           '';
-        await Replier.reply(`ascii2d 搜索失败${errMsg}`);
+        await replier.reply(`ascii2d 搜索失败${errMsg}`);
         console.error(`${global.getTime()} [error] ascii2d`);
         logError(asErr);
       } else {
         if (asSuc) hasSucc = true;
         if (!asSuc) success = false;
-        await Replier.reply(color, bovw);
+        await replier.reply(color, bovw);
         needCacheMsgs.push(color, bovw);
       }
     }
@@ -577,12 +588,12 @@ async function searchImg(context, customDB = -1) {
       const waRet = await whatanime(img.url, args.debug || global.config.bot.debug);
       if (waRet.success) hasSucc = true;
       if (!waRet.success) success = false; // 如果搜番有误也视作不成功
-      await Replier.reply(...waRet.msgs);
+      await replier.reply(...waRet.msgs);
       if (waRet.msgs.length > 0) needCacheMsgs.push(...waRet.msgs);
     }
 
     if (!hasSucc) logger.releaseQuota(context.user_id);
-    Replier.end();
+    replier.end(img);
 
     // 将需要缓存的信息写入数据库
     if (psCache.enable && success) {
@@ -601,11 +612,11 @@ function doOCR(context) {
   for (const img of imgs) {
     ocr
       .default(img, lang)
-      .then(results => replyMsg(context, results.join('\n')))
+      .then(results => replyMsg(context, CQ.escape(results.join('\n'))))
       .catch(e => {
         replyMsg(context, 'OCR发生错误');
         console.error(`${global.getTime()} [error] OCR`);
-        console.error(e);
+        logError(e);
       });
   }
 }
@@ -627,7 +638,7 @@ function doAkhr(context) {
     const handleError = e => {
       replyMsg(context, '词条识别出现错误：\n' + e);
       console.error(`${global.getTime()} [error] Akhr`);
-      console.error(e);
+      logError(e);
     };
 
     for (const img of imgs) {
@@ -702,11 +713,14 @@ async function replyMsg(context, message, at = false, reply = false) {
       reply
     );
   }
-  if (context.message_type !== 'private') {
-    message = `${reply && context.message_type !== 'guild' ? CQ.reply(context.message_id) : ''}${
-      at ? CQ.at(context.user_id) : ''
-    }${message}`;
+
+  const parts = [message];
+  if (context.message_type !== 'private' && at) parts.unshift(CQ.at(context.user_id));
+  if (context.message_type !== 'guild' && context.message_type !== 'private' && reply) {
+    parts.unshift(CQ.reply(context.message_id));
   }
+  message = parts.join('');
+
   const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
   switch (context.message_type) {
     case 'private':
@@ -759,52 +773,88 @@ async function replyMsg(context, message, at = false, reply = false) {
  * @param {*} context 消息对象
  * @param {string[]} msgs 回复内容
  */
-function replySearchMsgs(context, ...msgs) {
+async function replySearchMsgs(context, msgs) {
   msgs = msgs.filter(msg => msg && typeof msg === 'string');
   if (msgs.length === 0) return;
   //  是否私聊回复
-  if (global.config.bot.pmSearchResult && context.message_type !== 'guild') {
-    switch (context.message_type) {
-      case 'group':
-      case 'discuss':
-        if (!context.pmTipSended) {
-          context.pmTipSended = true;
-          replyMsg(context, '搜图结果将私聊发送', false, true);
-        }
-        break;
-    }
-    return asyncMap(msgs, msg =>
-      bot('send_private_msg', {
+  if (global.config.bot.pmSearchResult && context.message_type === 'group') {
+    await replyMsg(context, '搜图结果将私聊发送', false, true);
+    return asyncMap(msgs, msg => {
+      if (global.config.bot.debug) {
+        console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
+        console.log(debugMsgDeleteBase64Content(msg));
+      }
+      return bot('send_private_msg', {
         user_id: context.user_id,
         group_id: global.config.bot.pmSearchResultTemp ? context.group_id : undefined,
         message: msg,
-      })
-    );
+      });
+    });
   }
   return asyncMap(msgs, msg => replyMsg(context, msg, false, true));
 }
 
 /**
- * 发送合并转发
+ * 发送合并转发到私聊
  *
- * @param {any} ctx 消息上下文
+ * @param {*} ctx 消息上下文
  * @param {string[]} msgs 消息
  */
-function replyGroupForwardMsg(ctx, msgs) {
-  return bot('send_group_forward_msg', {
-    group_id: ctx.group_id,
-    messages: msgs.map(content => ({
-      type: 'node',
-      data: {
-        name: '\u200b',
-        uin: String(ctx.self_id),
-        content,
-      },
-    })),
+function replyPrivateForwardMsgs(ctx, msgs, prependMsgs = []) {
+  const messages = createForwardNodes(ctx, [...prependMsgs, ...msgs]);
+  if (global.config.bot.debug) {
+    console.log(`${global.getTime()} 回复私聊合并转发消息 qq=${ctx.user_id}`);
+    console.log(debugMsgDeleteBase64Content(JSON.stringify(messages)));
+  }
+  return bot('send_private_forward_msg', {
+    user_id: ctx.user_id,
+    messages,
   });
 }
 
+/**
+ * 发送合并转发到群
+ *
+ * @param {*} ctx 消息上下文
+ * @param {string[]} msgs 消息
+ */
+function replyGroupForwardMsgs(ctx, msgs, prependMsgs = []) {
+  const messages = createForwardNodes(ctx, [...prependMsgs, ...msgs]);
+  if (global.config.bot.debug) {
+    console.log(`${global.getTime()} 回复群组合并转发消息 group=${ctx.group_id} qq=${ctx.user_id}`);
+    console.log(debugMsgDeleteBase64Content(JSON.stringify(messages)));
+  }
+  return bot('send_group_forward_msg', {
+    group_id: ctx.group_id,
+    messages,
+  });
+}
+
+function createForwardNodes(ctx, msgs, prependCtxMsg = false) {
+  const messages = msgs.map(content => ({
+    type: 'node',
+    data: {
+      name: '\u200b',
+      uin: String(ctx.self_id),
+      content,
+    },
+  }));
+  if (prependCtxMsg) {
+    messages.unshift({
+      type: 'node',
+      data: {
+        id: ctx.message_id,
+      },
+    });
+  }
+  return messages;
+}
+
 function sendGroupMsg(group_id, message) {
+  if (global.config.bot.debug) {
+    console.log(`${global.getTime()} 发送群组消息 group=${group_id}`);
+    console.log(debugMsgDeleteBase64Content(message));
+  }
   return bot('send_group_msg', {
     group_id,
     message,
@@ -846,8 +896,8 @@ function debugMsgDeleteBase64Content(msg) {
 
 function getUniversalImgURL(url = '') {
   return url
-    .replace('/gchat.qpic.cn/gchatpic_new/', '/c2cpicdw.qpic.cn/offpic_new/')
-    .replace(/\/\d+\/+\d+-\d+-/, '/0/0-10000-')
+    .replace('/c2cpicdw.qpic.cn/offpic_new/', '/gchat.qpic.cn/gchatpic_new/')
+    .replace(/\/\d+\/+\d+-\d+-/, '/0/0-0-')
     .replace(/\?.*$/, '');
 }
 

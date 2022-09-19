@@ -4,7 +4,7 @@ import NodeCache from 'node-cache';
 import CQ from '../../CQcode';
 import logError from '../../logError';
 import parseJSON from '../../utils/parseJSON';
-import { getVideoInfo, getSearchVideoInfo } from './video';
+import { getVideoInfo } from './video';
 import { getDynamicInfo } from './dynamic';
 import { getArticleInfo } from './article';
 import { getLiveRoomInfo } from './live';
@@ -49,7 +49,7 @@ const getIdFromMsg = async msg => {
   let result = getIdFromNormalLink(msg);
   if (Object.values(result).some(id => id)) return result;
   if ((result = /((b23|acg)\.tv|bili2233.cn)\/[0-9a-zA-Z]+/.exec(msg))) {
-    return getIdFromShortLink(`http://${result[0]}`);
+    return getIdFromShortLink(`https://${result[0]}`);
   }
   return {};
 };
@@ -60,8 +60,20 @@ const markSended = (gid, ...ids) => gid && getCacheKeys(gid, ids).forEach(key =>
 
 async function bilibiliHandler(context) {
   const setting = global.config.bot.bilibili;
+  if (
+    !(
+      setting.despise ||
+      setting.getVideoInfo ||
+      setting.getDynamicInfo ||
+      setting.getArticleInfo ||
+      setting.getLiveRoomInfo
+    )
+  ) {
+    return;
+  }
+
   const { group_id: gid, message: msg } = context;
-  const { url, title } =
+  const { url } =
     (() => {
       if (!msg.includes('哔哩哔哩')) return;
       if (msg.includes('com.tencent.miniapp_01')) {
@@ -88,29 +100,19 @@ async function bilibiliHandler(context) {
 
   if (gid && getCacheKeys(gid, Object.values(param)).some(key => cache.has(key))) return;
 
-  if (setting.getVideoInfo) {
-    if (aid || bvid) {
-      const { reply, ids } = await getVideoInfo({ aid, bvid });
-      if (reply) {
-        global.replyMsg(context, reply);
-        markSended(gid, ...ids);
-      }
-      return true;
+  if (setting.getVideoInfo && (aid || bvid)) {
+    const { text, ids, reply } = await getVideoInfo({ aid, bvid });
+    if (text) {
+      global.replyMsg(context, text, false, !!reply);
+      if (ids && ids.length) markSended(gid, ...ids);
     }
-    if (title && !/bilibili\.com\/bangumi|(b23|acg)\.tv\/(ep|ss)/.test(url || msg) && !(dyid || arid || lrid)) {
-      const { reply, ids } = await getSearchVideoInfo(title);
-      if (reply) {
-        global.replyMsg(context, reply);
-        markSended(gid, ...ids);
-      }
-      return true;
-    }
+    return true;
   }
 
   if (setting.getDynamicInfo && dyid) {
     const reply = await getDynamicInfo(dyid);
     if (reply) {
-      global.replyMsg(context, reply);
+      global.replyMsg(context, reply.text, false, !!reply.reply);
       markSended(gid, dyid);
     }
     return true;
