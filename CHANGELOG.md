@@ -2,6 +2,23 @@
 
 ## 2022
 
+### 11-07 v2.40.2
+
+- 修复哔哩哔哩动态内链接的处理问题 [#370](../../issues/370)
+- 根据哔哩哔哩推送检测间隔过滤掉过旧的动态以免B站 API 抽风导致重复推送 [#370](../../issues/370)
+
+### 10-31 v2.40.1
+
+- 修复哔哩哔哩用户没有动态时添加推送会不停打印错误日志的问题 [#369](../../issues/369)
+- 修复 `bot.handleBannedHosts` 配置没有生效的问题
+
+### 10-29 v2.40.0
+
+- 支持输出 ascii2d 人为提交的搜索结果 [#361](../../issues/361)
+- 哔哩哔哩解析支持当原消息撤回时同步撤回解析结果（默认启用，可在配置中关闭）
+- 配置项变更
+  - A `bot.bilibili.respondRecall`
+
 ### 09-27 v2.39.6
 
 - 修复有时候输出错误日志会发生额外错误的问题
@@ -37,7 +54,7 @@
 - nHentai 上了 cf 五秒盾导致无法搜索本子，因此 `bot.getDoujinDetailFromNhentai` 默认值改为 `false`，并建议关闭
 - 配置项变更
   - A `bot.antiShielding`
-  - A `bot.handleBanedHosts`
+  - A `bot.handleBannedHosts`
   - M `bot.getDoujinDetailFromNhentai`
   - M `bot.setu.antiShielding`
 
@@ -219,7 +236,7 @@
 
 ### 10-24 v2.30.3
 
-- 因 pixiv.cat 在大陆被墙，`bot.setu.sendPximgProxys` 默认配置变更为 `["https://i.pixiv.re/"]`；设置了 `bot.setu.pximgProxy` 的用户也请注意修改
+- 因 pixiv.cat 在大陆被墙，`bot.setu.sendPximgProxies` 默认配置变更为 `["https://i.pixiv.re/"]`；设置了 `bot.setu.pximgProxy` 的用户也请注意修改
 - setu 使用在线反代时，如果设置了代理，反和谐会走代理下载图片；不反和谐时仍由 go-cqhttp 下载图片，这种情况下如果需要走代理，需要给 go-cqhttp 配置代理
 
 ### 10-24 v2.30.2
@@ -299,7 +316,7 @@
 - whatanime 发送预览视频不再需要依赖 ffmpeg
 - 改进方舟公招计算器的识别逻辑
 - 默认 OCR 服务变更为为 qq
-- `bot.setu.pximgProxy` 和 `bot.setu.sendPximgProxys` 新增支持一些占位符
+- `bot.setu.pximgProxy` 和 `bot.setu.sendPximgProxies` 新增支持一些占位符
 - 配置项变更
   - M `bot.ocr.use` 默认值 `"ocr.space"` -> `"qq"`
   - M `bot.akhr.ocr` 默认值 `"ocr.space"` -> `"qq"`
@@ -370,7 +387,7 @@ git pull
 - 配置项变更
   - M `bot.setu.pximgServerPort` 默认值 `60233` -> `0`
   - A `bot.pmSearchResultTemp`
-  - A `bot.setu.sendPximgProxys`
+  - A `bot.setu.sendPximgProxies`
   - A `bot.setu.shortenPximgProxy`
   - A `bot.setu.r18OnlyUrl`
   - A `bot.setu.r18OnlyPrivate`
