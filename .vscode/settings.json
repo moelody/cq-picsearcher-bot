@@ -1,5 +1,23 @@
 {
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
-  }
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true,
+    "db.json": true,
+    "list.txt": true,
+    "_multiconfig.yml": true,
+    ".deploy_git": true,
+    "node_modules": true,
+    "yarn.lock": true,
+    "lib_unusual": true,
+    ".vscode": true
+},
+  "hide-files.files": []
 }

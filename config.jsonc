@@ -281,7 +281,7 @@
     // ChatGPT
     "chatgpt": {
       // 是否启用
-      "enable": true,
+      "enable": false,
       // 触发功能的正则表达式，第一个捕获组内的内容会被当做 prompt 提交，会去除首尾空格
       // 例如默认配置的意思是，以 chatgpt 开头的消息会触发功能，chatgpt 后面的文字被提取为 prompt
       "regexp": "^chatgpt([\\s\\S]+)",
@@ -300,7 +300,9 @@
       // 群组黑名单
       "blackGroup": [],
       // 群组白名单（设置后将只允许白名单群组使用）
-      "whiteGroup": []
+      "whiteGroup": [],
+      // 覆盖配置（详见 wiki）
+      "overrides": []
     },
     // 点赞（需要使用的机器人客户端支持点赞功能）
     "like": {
